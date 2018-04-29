@@ -1,0 +1,106 @@
+body {
+    background-color: white;
+}
+h1 {
+    color: black;
+    text-align: center;
+    font-size: 50px;
+}
+p {
+    color: black;
+    text-align: center;
+    font-size: 200px;
+}
+p2 {
+    color: black;
+    text-align: center;
+    font-size: 100px;
+}
+l1 {
+    width: 50%;
+    text-align: right;
+    color: black;
+    font-size: 40px;
+    display: inline-block;
+    padding-top: 20px;
+    padding-right: 5px;
+}
+l2 {
+    width: 50%;
+    text-align: right;
+    padding-right: 40px;
+    color: black;
+    font-size: 50px;
+    display: inline-block;
+    padding-left: 10px;
+    padding-top: 20px;
+}
+input[type=text]{
+    width: 30%;
+    margin: auto;
+    display: inline-block;
+    font-size: 40px;
+}
+select{
+    width: 70%;
+    margin: auto;
+    display: block;
+    font-size: 16px;
+}
+.center-div
+{
+    display:block;
+     margin: 0 auto;
+     width: 100%; 
+}
+button_tone {
+    border: none;
+    width: 33%;
+    display: inline-block;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+button_keyhole {
+    border: none;
+    width: 50px;
+    height: 50px;
+    text-align: center;
+    background-size:50px;
+}
+button3 {
+    background-color: #948f8f; 
+    color: black;
+    border: none;
+    padding: 15px 32px;
+    margin: auto;
+    text-align: center;
+    display:block;
+    float: left;
+    font-size: 40px;
+    border-radius: 8px;
+}
+l3 {
+    display:block;
+    float: left;
+    color: black;
+    font-size: 40px;
+    padding-top: 20px;
+    padding-bottom: 200px;
+    padding-left: 20px;
+    padding-right: 5px;
+}
+button4 {
+    background-color: #948f8f; 
+    color: black;
+    border: none;
+    padding: 15px 32px;
+    margin: auto;
+    margin-bottom: 10px;
+    text-align: center;
+    width: 40%;
+    text-decoration: none;
+    display: block;
+    font-size: 30px;
+    border-radius: 8px;
+}

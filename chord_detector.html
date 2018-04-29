@@ -1,0 +1,304 @@
+<!--
+  Karl J. P. Smith
+  karljpsmith@gmail.com
+  karljpsmith.com
+  github.com/karljpsmith
+
+  This html page represents a 'musical lock': to 'open' the lock three 
+  people must each sing or hum the three pitches in a C chord, that is 
+  C4 (264Hz), E4 (330Hz), and G4 (396Hz). 
+
+  This page works best on a desktop brower, as most mobile browsers are
+  very particular about audio autoplay. 
+
+  The page presents three red buttons, each of which corresponds to one
+  of the three target pitches. Pressing a button plays an audio file of 
+  the respective target pitch (called c4.mp3, e4.mp3, etc.). 
+  Also, the page is listening to the microphone. It performs an FFT on the
+  raw microphone data, identifies the loudest audio frequencies in the 
+  data, and if any of the three notes of interest are present it 
+  turns the respective corresponding light green.
+  If all three notes are detected in the signal then all three audio files and 
+  the octave C5 (524Hz) are played. At the conclusion of C5, victory() is called
+  (right now victory() just resets the page). 
+
+  Pitch reference here: https://pages.mtu.edu/~suits/notefreqs.html
+  FFT source here: https://www.nayuki.io/page/free-small-fft-in-multiple-languages
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="css/basic_nav.css">
+      </head>
+<body>
+<h1>&nbsp</h1>
+<h1>Musical Lock</h1>
+<h1>&nbsp</h1>
+<button_tone onclick="PlayC()"> <img src="images/redlight.png" id="cbutton"> </button_tone>
+<button_tone onclick="PlayE()"> <img src="images/redlight.png" id="ebutton"> </button_tone>
+<button_tone onclick="PlayG()"> <img src="images/redlight.png" id="gbutton"> </button_tone>
+</body>
+
+<script type="text/javascript" src="functions/fft.js"></script>
+
+<script>
+  var cnote = new Audio();
+  cnote.src = "audio/c4.mp3";
+  var enote = new Audio();
+  enote.src = "audio/e4.mp3";
+  var gnote = new Audio();
+  gnote.src = "audio/g4.mp3";
+  var highcnote = new Audio();
+  highcnote.src = "audio/c5.mp3";
+
+  var isFinale = false;
+
+  var Cisplaying= false;
+  var Eisplaying= false;
+  var Gisplaying= false;
+
+  let FLAG_LET_SPACEBAR_TRIGGER_VICTORY = false;
+
+  //during audio playback, the microphone is disabled.
+  function PlayC() {
+      cnote.play();
+      document.getElementById("cbutton").src="images/greenlight.png";
+      document.getElementById("ebutton").src="images/redlight.png";
+      document.getElementById("gbutton").src="images/redlight.png";
+      cnote.addEventListener("ended", function(){
+     cnote.currentTime = 0; 
+        //reset the audio to be ready for playback. This seems
+        //to be faster than making a new Audio();
+     Cisplaying = false;
+      });
+      Cisplaying = true;
+  }
+  function PlayE() {
+      enote.play();
+      document.getElementById("cbutton").src="images/redlight.png";
+      document.getElementById("ebutton").src="images/greenlight.png";
+      document.getElementById("gbutton").src="images/redlight.png";
+      enote.addEventListener("ended", function(){
+     enote.currentTime = 0;
+     Eisplaying = false;
+      });
+      Eisplaying = true;
+  }
+  function PlayG() {
+      gnote.play();
+      document.getElementById("cbutton").src="images/redlight.png";
+      document.getElementById("ebutton").src="images/redlight.png";
+      document.getElementById("gbutton").src="images/greenlight.png";
+      gnote.addEventListener("ended", function(){
+     gnote.currentTime = 0;
+     Gisplaying = false;
+      });
+      Gisplaying = true;
+  }
+  function PlayHighC() {
+    //victory condition. Illuminate all three lights and play all four
+    //notes 
+    PlayC();
+    PlayE();
+    PlayG();
+    isFinale = true;
+    document.getElementById("cbutton").src="images/greenlight.png";
+    document.getElementById("ebutton").src="images/greenlight.png";
+    document.getElementById("gbutton").src="images/greenlight.png";
+
+    highcnote.play();
+    highcnote.addEventListener("ended", function(){
+      highcnote.currentTime = 0;
+      isFinale = false;
+      victory();
+      });
+  }
+
+var webaudio_tooling_obj = function () {
+  console.log("audio is starting up ...");
+  if (!navigator.getUserMedia)
+                navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                              navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    
+        if (navigator.getUserMedia){
+    
+            navigator.getUserMedia({audio:true}, 
+              function(stream) {
+                  start_microphone(stream);
+              },
+              function(e) {
+                alert('Error capturing audio.');
+              }
+            );
+    
+        } 
+        else { alert('getUserMedia not supported in this browser.'); }
+      
+function start_microphone(stream){
+  
+  let C4_frequency = 264 //These are close approximations, because the FFT
+  let E4_frequency = 330 //returns frequency historgrams that are not quite
+  let G4_frequency = 396 //centered over the real values of these notes. But
+                         //in practice these are close enough. 
+
+  let bufferSize = 2*1024;
+  var context = new AudioContext();
+  var input = context.createMediaStreamSource(stream)
+  var processor = context.createScriptProcessor(bufferSize,1,1);
+
+  input.connect(processor);
+  processor.connect(context.destination);
+  
+  var complex;
+  var real;
+  var totalTimes = 0;
+  var arrPass = new Array(20);
+  for (var i = 0; i < arrPass.length; ++i) { arrPass[i] = false; }
+  var index;
+
+  processor.onaudioprocess = function(e){
+    var magnitude = [];
+    var magnitudeIndex = [];
+
+    real = e.inputBuffer.getChannelData(0);
+    //There is no complex component of audio data, so our complex component array is mapped to 0.0
+    complex = Array.apply(null, Array(bufferSize)).map(Number.prototype.valueOf,0.0);
+    
+    //Performs a fast fourier transform (FFT), and returns transformed real and complex
+    //The new real and complex represent the (binned) frequencies that composed our original signal.
+    //More info here: https://en.wikipedia.org/wiki/Fourier_transform
+    transform(real, complex);
+
+    
+    //Magic number 200 here has to do with the limits of human hearing. We're
+    //truncating the fourier transform to ignore very high pitched sounds.
+    for (var index = 0; index < 200; index += 1) {
+      magnitude.push(Math.sqrt((real[index]*real[index]) + complex[index]*complex[index]));
+        //Get the magnitude of the fourier transform and store it in the array of magnitudes.
+      magnitudeIndex.push(index * 44/2);
+    }
+
+    var low = 0;
+    var high = magnitude.length - 1;
+    var numPassed = 0;
+
+    //Only check the loudest 7 frequencies. This is an empirical number from testing.
+    quickSort(magnitude, magnitudeIndex, low, high);
+    magnitude = magnitude.slice(magnitude.length-7, magnitude.length);
+    magnitudeIndex = magnitudeIndex.slice(magnitudeIndex.length-7, magnitudeIndex.length);
+
+    if (!Cisplaying && !Eisplaying && !Gisplaying){
+      if (contains(magnitudeIndex, C4_frequency)){
+        document.getElementById("cbutton").src="images/greenlight.png";
+        numPassed++;
+      }
+      else{
+        //if the note is playing because we're in the victory condition
+        if (!isFinale){ 
+          document.getElementById("cbutton").src="images/redlight.png";
+        }
+      }
+      if (contains(magnitudeIndex, E4_frequency)){
+        document.getElementById("ebutton").src="images/greenlight.png";
+        numPassed++;
+      }
+      else{
+        if (!isFinale){
+          document.getElementById("ebutton").src="images/redlight.png";
+        }
+      }
+      if (contains(magnitudeIndex, G4_frequency)){
+        document.getElementById("gbutton").src="images/greenlight.png";
+        numPassed++;
+      }
+      else{
+        if (!isFinale){
+          document.getElementById("gbutton").src="images/redlight.png";
+        }
+      }
+      if (numPassed == 3){ //must have all three notes present to pass.
+        arrPass[totalTimes] = true;
+      }
+      else{arrPass[totalTimes] = false;}
+      var totalTimesPassed=0;
+
+      //Must have all three notes present in 13 of the last 20 samples to pass.
+      //This is another empirical number from testing
+      for (var i = 0; i < arrPass.length; ++i) { 
+        if (arrPass[i]){totalTimesPassed++;}
+        }
+
+      //victory condition
+      if (totalTimesPassed > 13){
+        //reset array of successes 
+        for (var i = 0; i < arrPass.length; ++i) { arrPass[i] = false; }
+        PlayHighC();
+      }
+
+      totalTimes++;
+      if (totalTimes == 20){totalTimes = 0;}
+    };
+  }
+}
+
+document.body.onkeyup = function(e){
+  if (FLAG_LET_SPACEBAR_TRIGGER_VICTORY){
+    if(e.keyCode == 32 || e.key === ' ' || e.keyCode === 34){ PlayHighC(); }
+  }
+}
+
+function victory(){
+  isFinale = false;
+}
+
+/////////Helper Functions///////////
+
+//I got this quicksort implementation off stackoverflow somewhere I think
+//and tweaked it to include the 'rider array'. 
+function quickSort(arr, riderarr, left, right){
+  var len = arr.length, 
+  pivot,
+  partitionIndex;
+ if(left < right){
+   pivot = right;
+   partitionIndex = partition(arr, riderarr, pivot, left, right);
+   
+  //sort left and right
+  quickSort(arr,riderarr, left, partitionIndex - 1);
+  quickSort(arr,riderarr, partitionIndex + 1, right);
+ }
+ return arr;
+}
+function partition(arr,riderarr, pivot, left, right){
+  var pivotValue = arr[pivot],
+      partitionIndex = left;
+
+  for(var i = left; i < right; i++){
+   if(arr[i] < pivotValue){
+     swap(arr,riderarr, i, partitionIndex);
+     partitionIndex++;
+   }
+ }
+ swap(arr,riderarr, right, partitionIndex);
+ return partitionIndex;
+}
+function swap(arr,riderarr, i, j){
+  var temp = arr[i];
+  arr[i] = arr[j];
+  arr[j] = temp;
+  var ridertemp = riderarr[i];
+  riderarr[i] = riderarr[j];
+  riderarr[j] = ridertemp;
+}
+}();
+
+function contains(a, b) {
+    for (var i = 0; i < a.length; i++) {
+        if (a[i] === b) {
+            return true;
+        }
+    }
+    return false;
+}
+</script>
+</html> 
