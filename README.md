@@ -1,12 +1,4 @@
 # chord_detector_javascript
-  Karl J. P. Smith
-  
-  karljpsmith@gmail.com
-  
-  karljpsmith.com
-  
-  github.com/karljpsmith
-  
   
   This html page represents a 'musical lock': to 'open' the lock three 
   people must each sing or hum the three pitches in a C chord, that is 
