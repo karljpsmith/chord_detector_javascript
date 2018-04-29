@@ -1,9 +1,9 @@
 # chord_detector_javascript
 
-Karl J. P. Smith
-  karljpsmith@gmail.com
-  karljpsmith.com
-  github.com/karljpsmith
+Karl J. P. Smith\n
+  karljpsmith@gmail.com\n
+  karljpsmith.com\n
+  github.com/karljpsmith \n
   This html page represents a 'musical lock': to 'open' the lock three 
   people must each sing or hum the three pitches in a C chord, that is 
   C4 (264Hz), E4 (330Hz), and G4 (396Hz). 
